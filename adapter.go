@@ -1,4 +1,4 @@
-// Copyright 2017 The casbin Authors. All Rights Reserved.
+// Copyright 2020 The casbin Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package gdbadapter
+package main
 
 import (
 	"fmt"
@@ -34,14 +34,18 @@ type CasbinRule struct {
 }
 
 // Adapter represents the gdb adapter for policy storage.
+// Adapter 代表用于策略存储的gdb适配器。
 type Adapter struct {
 	driverName     string
 	dataSourceName string
+	dbSpecified    bool
 	tableName      string
 	db             gdb.DB
+	isFiltered     bool
 }
 
 // finalizer is the destructor for Adapter.
+// finalizer是Adapter的析构函数。
 func finalizer(a *Adapter) {
 	// 注意不用的时候不需要使用Close方法关闭数据库连接(并且gdb也没有提供Close方法)，
 	// 数据库引擎底层采用了链接池设计，当链接不再使用时会自动关闭
@@ -49,6 +53,15 @@ func finalizer(a *Adapter) {
 }
 
 // NewAdapter is the constructor for Adapter.
+// dbSpecified is an optional bool parameter. The default value is false.
+// It's up to whether you have specified an existing DB in dataSourceName.
+// If dbSpecified == true, you need to make sure the DB in dataSourceName exists.
+// If dbSpecified == false, the adapter will automatically create a DB named "casbin".
+
+// NewAdapter是Adapter的构造函数。
+// dbSpecified是可选的bool参数。 默认值为false。
+// 如果dbSpecified == true，则需要确保dataSourceName中的数据库存在。
+// 如果dbSpecified == false，则适配器将自动创建一个名为“ casbin”的数据库。
 func NewAdapter(driverName string, dataSourceName string) (*Adapter, error) {
 	a := &Adapter{}
 	a.driverName = driverName
@@ -56,8 +69,7 @@ func NewAdapter(driverName string, dataSourceName string) (*Adapter, error) {
 	a.tableName = "casbin_rule"
 
 	// Open the DB, create it if not existed.
-	err := a.open()
-	if err != nil {
+	if err := a.open(); err != nil {
 		return nil, err
 	}
 
@@ -67,6 +79,15 @@ func NewAdapter(driverName string, dataSourceName string) (*Adapter, error) {
 	return a, nil
 }
 
+// NewAdapterByDB is the constructor for Adapter.Just pass in gdb.DB
+// NewAdapterByDB 是Adapter的构造函数,只需要传入gdb.DB
+func NewAdapterByDB(db gdb.DB) *Adapter {
+	a := &Adapter{
+		db: db,
+	}
+	_ = a.createTable()
+	return a
+}
 // NewAdapterFromOptions is the constructor for Adapter with existed connection
 func NewAdapterFromOptions(adapter *Adapter) (*Adapter, error) {
 
@@ -116,7 +137,13 @@ func (a *Adapter) close() error {
 	return nil
 }
 
+// createTable
 func (a *Adapter) createTable() error {
+	if _, err := a.db.Exec(fmt.Sprintf("DROP TABLE IF EXISTS `%v`;", a.tableName)); err != nil{ // 判断表是否存在
+		fmt.Println(err)
+		panic(err)
+	}
+
 	_, err := a.db.Exec(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (ptype VARCHAR(10), v0 VARCHAR(256), v1 VARCHAR(256), v2 VARCHAR(256), v3 VARCHAR(256), v4 VARCHAR(256), v5 VARCHAR(256))", a.tableName))
 	return err
 }
