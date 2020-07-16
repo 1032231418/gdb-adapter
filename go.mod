@@ -1,4 +1,4 @@
-module github.com/vance-liu/gdb-adapter
+module github.com/SliverHorn/gdb-adapter
 
 go 1.12
 
