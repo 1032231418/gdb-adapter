@@ -81,14 +81,19 @@ func NewAdapter(driverName string, dataSourceName string) (*Adapter, error) {
 
 // NewAdapterByDB is the constructor for Adapter.Just pass in gdb.DB
 // NewAdapterByDB 是Adapter的构造函数,只需要传入gdb.DB
-func NewAdapterByDB(db gdb.DB) *Adapter {
+func NewAdapterByDB(db gdb.DB) (*Adapter, error) {
 	a := &Adapter{
 		db: db,
 	}
 	_ = a.createTable()
-	return a
+	if err := a.createTable(); err != nil {
+		return nil, err
+	}
+	return a, nil
 }
+
 // NewAdapterFromOptions is the constructor for Adapter with existed connection
+// NewAdapterFromOptions 适配器的构造函数是否具有已存在的连接
 func NewAdapterFromOptions(adapter *Adapter) (*Adapter, error) {
 
 	if adapter.tableName == "" {
@@ -130,54 +135,61 @@ func (a *Adapter) open() error {
 	return a.createTable()
 }
 
+// close
 func (a *Adapter) close() error {
-	// 注意不用的时候不需要使用Close方法关闭数据库连接(并且gdb也没有提供Close方法)，
-	// 数据库引擎底层采用了链接池设计，当链接不再使用时会自动关闭
-	a.db = nil
+	a.db = nil // 注意不用的时候不需要使用Close方法关闭数据库连接(并且gdb也没有提供Close方法)，数据库引擎底层采用了链接池设计，当链接不再使用时会自动关闭
 	return nil
 }
 
-// createTable
+// createTable Create a data table
+// createTable 创建数据表
 func (a *Adapter) createTable() error {
-	if _, err := a.db.Exec(fmt.Sprintf("DROP TABLE IF EXISTS `%v`;", a.tableName)); err != nil{ // 判断表是否存在
-		fmt.Println(err)
+	tables, err := a.db.Tables(a.dataSourceName)
+	if err != nil {
 		panic(err)
 	}
-
-	_, err := a.db.Exec(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (ptype VARCHAR(10), v0 VARCHAR(256), v1 VARCHAR(256), v2 VARCHAR(256), v3 VARCHAR(256), v4 VARCHAR(256), v5 VARCHAR(256))", a.tableName))
+	for _, v := range tables {
+		if v == a.tableName {
+			return nil
+		}
+	}
+	_, err = a.db.Exec(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (ptype VARCHAR(10), v0 VARCHAR(256), v1 VARCHAR(256), v2 VARCHAR(256), v3 VARCHAR(256), v4 VARCHAR(256), v5 VARCHAR(256))", a.tableName))
 	return err
 }
 
+// dropTable Delete table
+// dropTable 删除表
 func (a *Adapter) dropTable() error {
 	_, err := a.db.Exec(fmt.Sprintf("DROP TABLE %s", a.tableName))
 	return err
 }
 
-func loadPolicyLine(line CasbinRule, model model.Model) {
-	lineText := line.PType
-	if line.V0 != "" {
-		lineText += ", " + line.V0
+// loadPolicyLine
+func loadPolicyLine(rule CasbinRule, model model.Model) {
+	ruleText := rule.PType
+	if rule.V0 != "" {
+		ruleText += ", " + rule.V0
 	}
-	if line.V1 != "" {
-		lineText += ", " + line.V1
+	if rule.V1 != "" {
+		ruleText += ", " + rule.V1
 	}
-	if line.V2 != "" {
-		lineText += ", " + line.V2
+	if rule.V2 != "" {
+		ruleText += ", " + rule.V2
 	}
-	if line.V3 != "" {
-		lineText += ", " + line.V3
+	if rule.V3 != "" {
+		ruleText += ", " + rule.V3
 	}
-	if line.V4 != "" {
-		lineText += ", " + line.V4
+	if rule.V4 != "" {
+		ruleText += ", " + rule.V4
 	}
-	if line.V5 != "" {
-		lineText += ", " + line.V5
+	if rule.V5 != "" {
+		ruleText += ", " + rule.V5
 	}
-
-	persist.LoadPolicyLine(lineText, model)
+	persist.LoadPolicyLine(ruleText, model)
 }
 
 // LoadPolicy loads policy from database.
+// LoadPolicy 从数据库加载策略。
 func (a *Adapter) LoadPolicy(model model.Model) error {
 	var lines []CasbinRule
 
@@ -219,13 +231,12 @@ func savePolicyLine(ptype string, rule []string) CasbinRule {
 }
 
 // SavePolicy saves policy to database.
+// SavePolicy 将策略保存到数据库。
 func (a *Adapter) SavePolicy(model model.Model) error {
-	err := a.dropTable()
-	if err != nil {
+	if err := a.dropTable(); err != nil {
 		return err
 	}
-	err = a.createTable()
-	if err != nil {
+	if err := a.createTable(); err != nil {
 		return err
 	}
 
@@ -253,6 +264,7 @@ func (a *Adapter) SavePolicy(model model.Model) error {
 }
 
 // AddPolicy adds a policy rule to the storage.
+// AddPolicy 向存储添加策略规则。
 func (a *Adapter) AddPolicy(sec string, ptype string, rule []string) error {
 	line := savePolicyLine(ptype, rule)
 	_, err := a.db.Table(a.tableName).Data(&line).Insert()
@@ -260,6 +272,7 @@ func (a *Adapter) AddPolicy(sec string, ptype string, rule []string) error {
 }
 
 // RemovePolicy removes a policy rule from the storage.
+// RemovePolicy 从存储中删除策略规则。
 func (a *Adapter) RemovePolicy(sec string, ptype string, rule []string) error {
 	line := savePolicyLine(ptype, rule)
 	err := rawDelete(a, line)
@@ -267,6 +280,7 @@ func (a *Adapter) RemovePolicy(sec string, ptype string, rule []string) error {
 }
 
 // RemoveFilteredPolicy removes policy rules that match the filter from the storage.
+// RemoveFilteredPolicy 从存储中删除与筛选器匹配的策略规则。
 func (a *Adapter) RemoveFilteredPolicy(sec string, ptype string, fieldIndex int, fieldValues ...string) error {
 	line := CasbinRule{}
 
@@ -294,7 +308,7 @@ func (a *Adapter) RemoveFilteredPolicy(sec string, ptype string, fieldIndex int,
 }
 
 func rawDelete(a *Adapter, line CasbinRule) error {
-	db := a.db.Table(a.tableName)
+	db := a.db.Table(a.tableName).Safe()
 
 	db.Where("ptype = ?", line.PType)
 	if line.V0 != "" {

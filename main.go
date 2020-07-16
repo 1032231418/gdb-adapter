@@ -13,7 +13,7 @@ func main() {
 				Port:     "3306",
 				User:     "root",
 				Pass:     "gdkid,,..",
-				Name:     "gf-vue-admin",
+				Name:     "casbin",
 				Type:     "mysql",
 				Role:     "master",
 				Weight:   100,
@@ -25,17 +25,9 @@ func main() {
 		panic(err)
 	}
 	db.SetDebug(true)
-	r , err := db.Table("jwts").FindOne()
+	tables, err := db.Tables("casbin")
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(r)
-	if r, err := db.Exec(fmt.Sprintf("DROP TABLE IF EXISTS `%v`;", "jwts")); err != nil { // 判断表是否存在
-		fmt.Println(err)
-		panic(err)
-	}else {
-		i1, _ := r.RowsAffected()
-		i2, _ := r.LastInsertId()
-		fmt.Println(i1, i2)
-	}
+	fmt.Println(tables)
 }
