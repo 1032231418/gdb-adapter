@@ -16,7 +16,7 @@ package gdbadapter
 
 import (
 	"fmt"
-	"github.com/gogf/gf/g/database/gdb"
+	"github.com/gogf/gf/database/gdb"
 	"runtime"
 
 	"github.com/casbin/casbin/v2/model"
