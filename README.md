@@ -7,7 +7,7 @@ Based on [GF ORM](https://github.com/gogf/gf), and tested in:
 - MySQL
 - PostgreSQL
 
-基于 [vance-liu/gdb-adapter](go get github.com/vance-liu/gdb-adapter)
+基于 [vance-liu/gdb-adapter](https://github.com/vance-liu/gdb-adapter)
 
 ## Installation
 
