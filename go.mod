@@ -1,4 +1,4 @@
-module github.com/SliverHorn/gdb-adapter
+module github.com/flipped-aurora/gdb-adapter
 
 go 1.12
 

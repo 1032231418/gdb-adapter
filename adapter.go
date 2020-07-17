@@ -79,13 +79,13 @@ func NewAdapter(driverName string, dataSourceName string) (*Adapter, error) {
 	return a, nil
 }
 
-// NewAdapterByDB is the constructor for Adapter.Just pass in gdb.DB
-// NewAdapterByDB 是Adapter的构造函数,只需要传入gdb.DB
+// NewAdapterByDB is the constructor for Adapter.Need to pass in gdb.DB
+// NewAdapterByDB 是Adapter的构造函数,需要传入gdb.DB
 func NewAdapterByDB(db gdb.DB) (*Adapter, error) {
+	gdb.New()
 	a := &Adapter{
 		db: db,
 	}
-	_ = a.createTable()
 	if err := a.createTable(); err != nil {
 		return nil, err
 	}

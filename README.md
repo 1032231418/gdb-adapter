@@ -7,27 +7,28 @@ Based on [GF ORM](https://github.com/gogf/gf), and tested in:
 - MySQL
 - PostgreSQL
 
+基于[vance-liu/gdb-adapter](go get github.com/vance-liu/gdb-adapter)
+
 ## Installation
 
-    go get github.com/vance-liu/gdb-adapter
+    go get github.com/flipped-aurora/gdb-adapter
 
 ## Usage example
 
 ```go
-opts := &Adapter{
-    driverName: "mysql",
-    dataSourceName: "root:1234@tcp(127.0.0.1:3306)/casbin",
-    tableName: "casbin_rule",
-    // or reuse an existing connection:
-    // db: yourDBConn,
+db, err = gdb.New("casbin")
+if err != nil{
+	panic(err)
 }
-
-a := NewAdapterFromOptions(opts)
+a := NewAdapterByDB(db)
 e := casbin.NewEnforcer("examples/rbac_model.conf", a)
 ```
 
 ## Notice
-you should create the database on your own.
+
+- you should create the database on your own.
+
+-  Not tested, please do not use in production environment.
 
 ## Getting Help
 
@@ -36,3 +37,4 @@ you should create the database on your own.
 ## License
 
 This project is under Apache 2.0 License. See the [LICENSE](LICENSE) file for the full license text.
+
