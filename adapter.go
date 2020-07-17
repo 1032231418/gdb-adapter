@@ -81,9 +81,9 @@ func NewAdapter(driverName string, dataSourceName string) (*Adapter, error) {
 
 // NewAdapterByDB is the constructor for Adapter.Need to pass in gdb.DB
 // NewAdapterByDB 是Adapter的构造函数,需要传入gdb.DB
-func NewAdapterByDB(db gdb.DB) (*Adapter, error) {
-	gdb.New()
+func NewAdapterByDB(db gdb.DB, dbName string) (*Adapter, error) {
 	a := &Adapter{
+		dataSourceName: dbName,
 		db: db,
 	}
 	if err := a.createTable(); err != nil {
